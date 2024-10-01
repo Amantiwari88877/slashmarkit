@@ -1,121 +1,192 @@
-const rotateMin = date => {
-    const minuteHand = document.getElementById('minute');
-    let secVal = date.getSeconds(),
-        degFromSeconds = .1 * secVal,
-        minuteVal = date.getMinutes();
-
-    minuteHand.style.transform = `rotate(${(minuteVal*6)+degFromSeconds}deg)`;
-
-    rotateHour(date, minuteVal);
-}
-
-const rotateHour = (date, minuteVal) => {
-    const hourHand = document.getElementById('hour');
-    let degFromMin = .5 * minuteVal,
-        hourVal = date.getHours();
-
-    hourHand.style.transform = `rotate(${(hourVal*30)+degFromMin}deg)`;
-}
-
-const weekDay = date => {
-    const weekDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-          dateIndex = date.getDay();
-    return weekDays[dateIndex];
-}
-
-const monthName = date => {
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-          monthIndex = date.getMonth();
-    return monthNames[monthIndex];
-}
-
-const displayDate = date => {
-    const dateOutput = document.getElementById("date-text"),
-          dayNumber = date.getDate();
-
-    dateOutput.innerHTML = `${weekDay(date)},<br/>${monthName(date)} ${dayNumber}`;
-}
+const classNames = {
+  DELETE: "delete" };
 
 
-const getUserLocation = async () => {
-    let connection = await fetch('http://ip-api.com/json/');
-    if (connection.ok){
-        let response = await connection.json(),
-            location = `${response.city}, ${response.country}`
-        return location;
-    }else {
-        return false;
-    }
-}
+const logger = {
+  logging: false,
+  log(msg) {
+    if (this.logging) console.log(msg);
+  } };
 
-const getWeatherInfo = () => {
-    return getUserLocation().then(async location => {
-        if (!location){
-            return false;
-        }
-        document.getElementById("location").innerHTML = location;
-        let connection = await fetch(`https://api.weatherapi.com/v1/current.json?key=38a5051e7ce6493f86c50549200212&q=${location}`, {cache: "no-cache"});
 
-        if(connection.ok){
-            let response = await connection.json(),
-                info = response.current;
-            return info;
-        }else {
-            return false;
-        }
+const itemProto = {
+  bought: false,
+  toggle() {
+    this.bought = !this.bought;
+    this.trigger("toggled", this);
+  } };
+
+
+const items = {
+  list: [],
+
+  add(item) {
+    let newItem = Object.create(itemProto);
+    Object.assign(newItem, item, Backbone.Events);
+    newItem.on("toggled", function (item) {
+      logger.log("toggled");
+      view.addToList(item);
     });
-}
+    newItem.id = _.uniqueId();
+    this.list.push(newItem);
+    this.trigger("itemAdded", newItem);
+    this.trigger("updated");
+  },
 
-const printTempInfo = scale => {
-    getWeatherInfo().then(info => {
-        if (!info){
-            return false;
-        }
-        const temp = document.getElementById("weather-temp");
-        switch (scale){
-            default:
-            case "c":
-                temp.innerHTML = `${info.temp_c}°c`;
-                temp.title = "Celsius";
-                break;
-            case "f":
-                temp.innerHTML = `${info.temp_f}°f`;
-                temp.title = "Fahrenheit";
-        }
-    })
-}
+  delete(id) {
+    logger.log("delete: " + id);
+    let item = _.find(items.list, {
+      "id": id });
 
-const printWeatherInfo = () => {
-    getWeatherInfo().then(info =>{
-        if (!info){
-            return false;
-        }
-        const icon = document.getElementById("weather-icon"),
-              temp = document.getElementById("weather-temp"),
-              parent = document.getElementById("weather");
 
-        icon.src = info.condition.icon;
-        icon.alt = info.condition.text;
-        icon.title = info.condition.text;
-        printTempInfo('c');
+    view.remove(item.$el);
 
-        icon.addEventListener('load', () => parent.style.display = "flex");
-        temp.addEventListener('click', switchTempScale);
-    })
-}
+    this.list = _.pull(this.list, item);
+    this.trigger("updated");
+  },
 
-const switchTempScale = () => {
-    const temp = document.getElementById("weather-temp");
+  toggle(id) {
+    _.find(items.list, {
+      "id": id }).
+    toggle();
 
-    temp.title[0] == "C" ? printTempInfo('f') : printTempInfo('c');
-}
+    this.trigger("updated");
+  } };
 
-window.addEventListener("load", () => {
-    setInterval(() => {
-        let dd = new Date();
-        rotateMin(dd);
-    }, 100);
-    let dd = new Date();
-    displayDate(dd);
-    printWeatherInfo();
-})
+
+const app = {
+  init() {
+    view.init();
+    Object.assign(items, Backbone.Events);
+    items.on("itemAdded", function (item) {
+      logger.log("item added");
+      view.addToList(item);
+    });
+
+    items.on("updated", function () {
+      logger.log("updated");
+      view.updateQuantities();
+    });
+  } };
+
+
+const view = {
+  init() {
+
+    this.$shoppingList = $("#shopping-list");
+    this.$boughtList = $("#bought-list");
+    this.$form = $("form");
+
+    const handleSubmit = function (e) {
+      e.preventDefault();
+
+      let name = $("#item-input"),
+      quantity = $("#quantity-input");
+
+      if (name.val()) {
+        items.add({
+          name: name.val(),
+          quantity: quantity.val() || 1 });
+
+      }
+
+      name.val("");
+      quantity.val("");
+
+    };
+
+    const handleClick = function (e) {
+      e.preventDefault();
+      logger.log("Clicked");
+
+      if (e.target.nodeName === "LI") {
+        let id = $(e.target).data("id").toString();
+        items.toggle(id);
+      } else if (e.target.className === classNames.DELETE) {
+        let id = $(e.target).parent().data("id").toString();
+        items.delete(id);
+      }
+    };
+
+    const handleDelete = function (e) {
+      e.preventDefault();
+      logger.log("Delete: " + item);
+      let id = $(e.target).data("id").toString(),
+      item = _.find(items.list, {
+        "id": id });
+
+
+    };
+
+    $("#lists").on("click", handleClick);
+    this.$form.on("submit", handleSubmit);
+    $("." + classNames.DELETE).on("click", handleDelete);
+
+  },
+
+  addToList(item, list) {
+    let $item = item.$el || this.createListItem(item);
+
+    if (item.bought) {
+      $item.prependTo(this.$boughtList);
+    } else {
+      $item.appendTo(this.$shoppingList);
+    }
+  },
+
+  updateQuantities() {
+    logger.log("updateQuantities");
+    $("#shopping-num").html(this.$shoppingList.children().length);
+    $("#bought-num").html(this.$boughtList.children().length);
+  },
+
+  remove($el) {
+    $el.remove();
+  },
+
+  createListItem(item) {
+    item.$el = $(`<li data-id=${item.id}>${item.name} <span class="quantity">${item.quantity}</span><span class="delete">X</span></li>`);
+
+    return item.$el;
+  },
+
+  getListItem(id) {
+    let $el = $("li[data-id='" + id + "']");
+    return $el.length ? $el : null;
+  },
+
+  render(items) {
+    logger.log("render");
+
+    this.$shoppingList.empty();
+    this.$boughtList.empty();
+
+    items.forEach(item => {
+      let $item = $(`<li data-id=${item.id}>${item.name}<span>${item.quantity}</span></li>`);
+
+      if (item.bought) {
+        this.$boughtList.append($item);
+        $item.addClass("bought");
+      } else {
+        this.$shoppingList.append($item);
+      }
+    });
+
+  } };
+
+
+app.init();
+
+items.add({
+  name: "Wine",
+  quantity: 1 });
+
+
+items.add({
+  name: "Cheese",
+  quantity: 1 });
+
+
+items.add({
+  name: "Dark chocolate",
+  quantity: 1 });
