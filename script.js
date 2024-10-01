@@ -1,137 +1,121 @@
-let firstOperand = ''
-let secondOperand = ''
-let currentOperation = null
-let shouldResetScreen = false
+const rotateMin = date => {
+    const minuteHand = document.getElementById('minute');
+    let secVal = date.getSeconds(),
+        degFromSeconds = .1 * secVal,
+        minuteVal = date.getMinutes();
 
-const numberButtons = document.querySelectorAll('[data-number]')
-const operatorButtons = document.querySelectorAll('[data-operator]')
-const equalsButton = document.getElementById('equalsBtn')
-const clearButton = document.getElementById('clearBtn')
-const deleteButton = document.getElementById('deleteBtn')
-const pointButton = document.getElementById('pointBtn')
-const lastOperationScreen = document.getElementById('lastOperationScreen')
-const currentOperationScreen = document.getElementById('currentOperationScreen')
+    minuteHand.style.transform = `rotate(${(minuteVal*6)+degFromSeconds}deg)`;
 
-window.addEventListener('keydown', handleKeyboardInput)
-equalsButton.addEventListener('click', evaluate)
-clearButton.addEventListener('click', clear)
-deleteButton.addEventListener('click', deleteNumber)
-pointButton.addEventListener('click', appendPoint)
-
-numberButtons.forEach((button) =>
-  button.addEventListener('click', () => appendNumber(button.textContent))
-)
-
-operatorButtons.forEach((button) =>
-  button.addEventListener('click', () => setOperation(button.textContent))
-)
-
-function appendNumber(number) {
-  if (currentOperationScreen.textContent === '0' || shouldResetScreen)
-    resetScreen()
-  currentOperationScreen.textContent += number
+    rotateHour(date, minuteVal);
 }
 
-function resetScreen() {
-  currentOperationScreen.textContent = ''
-  shouldResetScreen = false
+const rotateHour = (date, minuteVal) => {
+    const hourHand = document.getElementById('hour');
+    let degFromMin = .5 * minuteVal,
+        hourVal = date.getHours();
+
+    hourHand.style.transform = `rotate(${(hourVal*30)+degFromMin}deg)`;
 }
 
-function clear() {
-  currentOperationScreen.textContent = '0'
-  lastOperationScreen.textContent = ''
-  firstOperand = ''
-  secondOperand = ''
-  currentOperation = null
+const weekDay = date => {
+    const weekDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+          dateIndex = date.getDay();
+    return weekDays[dateIndex];
 }
 
-function appendPoint() {
-  if (shouldResetScreen) resetScreen()
-  if (currentOperationScreen.textContent === '')
-    currentOperationScreen.textContent = '0'
-  if (currentOperationScreen.textContent.includes('.')) return
-  currentOperationScreen.textContent += '.'
+const monthName = date => {
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+          monthIndex = date.getMonth();
+    return monthNames[monthIndex];
 }
 
-function deleteNumber() {
-  currentOperationScreen.textContent = currentOperationScreen.textContent
-    .toString()
-    .slice(0, -1)
+const displayDate = date => {
+    const dateOutput = document.getElementById("date-text"),
+          dayNumber = date.getDate();
+
+    dateOutput.innerHTML = `${weekDay(date)},<br/>${monthName(date)} ${dayNumber}`;
 }
 
-function setOperation(operator) {
-  if (currentOperation !== null) evaluate()
-  firstOperand = currentOperationScreen.textContent
-  currentOperation = operator
-  lastOperationScreen.textContent = `${firstOperand} ${currentOperation}`
-  shouldResetScreen = true
+
+const getUserLocation = async () => {
+    let connection = await fetch('http://ip-api.com/json/');
+    if (connection.ok){
+        let response = await connection.json(),
+            location = `${response.city}, ${response.country}`
+        return location;
+    }else {
+        return false;
+    }
 }
 
-function evaluate() {
-  if (currentOperation === null || shouldResetScreen) return
-  if (currentOperation === '÷' && currentOperationScreen.textContent === '0') {
-    alert("You can't divide by 0!")
-    return
-  }
-  secondOperand = currentOperationScreen.textContent
-  currentOperationScreen.textContent = roundResult(
-    operate(currentOperation, firstOperand, secondOperand)
-  )
-  lastOperationScreen.textContent = `${firstOperand} ${currentOperation} ${secondOperand} =`
-  currentOperation = null
+const getWeatherInfo = () => {
+    return getUserLocation().then(async location => {
+        if (!location){
+            return false;
+        }
+        document.getElementById("location").innerHTML = location;
+        let connection = await fetch(`https://api.weatherapi.com/v1/current.json?key=38a5051e7ce6493f86c50549200212&q=${location}`, {cache: "no-cache"});
+
+        if(connection.ok){
+            let response = await connection.json(),
+                info = response.current;
+            return info;
+        }else {
+            return false;
+        }
+    });
 }
 
-function roundResult(number) {
-  return Math.round(number * 1000) / 1000
+const printTempInfo = scale => {
+    getWeatherInfo().then(info => {
+        if (!info){
+            return false;
+        }
+        const temp = document.getElementById("weather-temp");
+        switch (scale){
+            default:
+            case "c":
+                temp.innerHTML = `${info.temp_c}°c`;
+                temp.title = "Celsius";
+                break;
+            case "f":
+                temp.innerHTML = `${info.temp_f}°f`;
+                temp.title = "Fahrenheit";
+        }
+    })
 }
 
-function handleKeyboardInput(e) {
-  if (e.key >= 0 && e.key <= 9) appendNumber(e.key)
-  if (e.key === '.') appendPoint()
-  if (e.key === '=' || e.key === 'Enter') evaluate()
-  if (e.key === 'Backspace') deleteNumber()
-  if (e.key === 'Escape') clear()
-  if (e.key === '+' || e.key === '-' || e.key === '*' || e.key === '/')
-    setOperation(convertOperator(e.key))
+const printWeatherInfo = () => {
+    getWeatherInfo().then(info =>{
+        if (!info){
+            return false;
+        }
+        const icon = document.getElementById("weather-icon"),
+              temp = document.getElementById("weather-temp"),
+              parent = document.getElementById("weather");
+
+        icon.src = info.condition.icon;
+        icon.alt = info.condition.text;
+        icon.title = info.condition.text;
+        printTempInfo('c');
+
+        icon.addEventListener('load', () => parent.style.display = "flex");
+        temp.addEventListener('click', switchTempScale);
+    })
 }
 
-function convertOperator(keyboardOperator) {
-  if (keyboardOperator === '/') return '÷'
-  if (keyboardOperator === '*') return '×'
-  if (keyboardOperator === '-') return '−'
-  if (keyboardOperator === '+') return '+'
+const switchTempScale = () => {
+    const temp = document.getElementById("weather-temp");
+
+    temp.title[0] == "C" ? printTempInfo('f') : printTempInfo('c');
 }
 
-function add(a, b) {
-  return a + b
-}
-
-function substract(a, b) {
-  return a - b
-}
-
-function multiply(a, b) {
-  return a * b
-}
-
-function divide(a, b) {
-  return a / b
-}
-
-function operate(operator, a, b) {
-  a = Number(a)
-  b = Number(b)
-  switch (operator) {
-    case '+':
-      return add(a, b)
-    case '−':
-      return substract(a, b)
-    case '×':
-      return multiply(a, b)
-    case '÷':
-      if (b === 0) return null
-      else return divide(a, b)
-    default:
-      return null
-  }
-}
+window.addEventListener("load", () => {
+    setInterval(() => {
+        let dd = new Date();
+        rotateMin(dd);
+    }, 100);
+    let dd = new Date();
+    displayDate(dd);
+    printWeatherInfo();
+})
