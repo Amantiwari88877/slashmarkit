@@ -1,44 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <link rel="stylesheet" href="style.css" />
-    <title>Form Validator</title>
-  </head>
-  <body>
-    <div class="container">
-      <form id="form" class="form">
-        <h2>Register With Us</h2>
-        <div class="form-control">
-          <label for="username">Username</label>
-          <input type="text" id="username" placeholder="Enter username" />
-          <small>Error message</small>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, 
+                   initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Rock Paper Scissor</title>
+</head>
+<body>
+    <section class="game">
+        <!--Title -->
+        <div class="title">Rock Paper Scissor</div>
+         
+          <!--Display Score of player and computer -->
+        <div class="score">  
+            <div class="playerScore">
+                <h2>Player</h2>
+                <p class="p-count count">0</p>
+ 
+            </div>       
+            <div class="computerScore">
+                <h2>Computer</h2>
+                <p class="c-count count">0</p>
+ 
+            </div>
         </div>
-        <div class="form-control">
-          <label for="email">Email</label>
-          <input type="text" id="email" placeholder="Enter email" />
-          <small>Error message</small>
+       
+        <div class="move">Choose your move</div>
+         
+          <!--Number of moves left before game ends -->
+        <div class="movesleft">Moves Left: 10 </div>
+         
+          <!--Options available to player to play game -->
+        <div class="options">
+            <button class="rock">Rock</button>
+            <button class="paper">Paper</button>
+            <button class="scissor">Scissors</button>    
         </div>
-        <div class="form-control">
-          <label for="password">Password</label>
-          <input type="password" id="password" placeholder="Enter password" />
-          <small>Error message</small>
-        </div>
-        <div class="form-control">
-          <label for="password2">Confirm Password</label>
-          <input
-            type="password"
-            id="password2"
-            placeholder="Enter password again"
-          />
-          <small>Error message</small>
-        </div>
-        <button type="submit">Submit</button>
-      </form>
-    </div>
-
-    <script src="script.js"></script>
-  </body>
+         
+          <!--Final result of game -->
+        <div class="result"></div>
+         
+          <!--Reload the game -->
+        <button class="reload"></button>
+ 
+    </section>
+ 
+    <script src="Script.js"></script>
+</body>
 </html>
