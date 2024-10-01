@@ -1,192 +1,86 @@
-const classNames = {
-  DELETE: "delete" };
+const form = document.getElementById('form');
+const username = document.getElementById('username');
+const email = document.getElementById('email');
+const password = document.getElementById('password');
+const password2 = document.getElementById('password2');
 
+// Show input error message
+function showError(input, message) {
+  const formControl = input.parentElement;
+  formControl.className = 'form-control error';
+  const small = formControl.querySelector('small');
+  small.innerText = message;
+}
 
-const logger = {
-  logging: false,
-  log(msg) {
-    if (this.logging) console.log(msg);
-  } };
+// Show success outline
+function showSuccess(input) {
+  const formControl = input.parentElement;
+  formControl.className = 'form-control success';
+}
 
+// Check email is valid
+function checkEmail(input) {
+  const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  if (re.test(input.value.trim())) {
+    showSuccess(input);
+  } else {
+    showError(input, 'Email is not valid');
+  }
+}
 
-const itemProto = {
-  bought: false,
-  toggle() {
-    this.bought = !this.bought;
-    this.trigger("toggled", this);
-  } };
-
-
-const items = {
-  list: [],
-
-  add(item) {
-    let newItem = Object.create(itemProto);
-    Object.assign(newItem, item, Backbone.Events);
-    newItem.on("toggled", function (item) {
-      logger.log("toggled");
-      view.addToList(item);
-    });
-    newItem.id = _.uniqueId();
-    this.list.push(newItem);
-    this.trigger("itemAdded", newItem);
-    this.trigger("updated");
-  },
-
-  delete(id) {
-    logger.log("delete: " + id);
-    let item = _.find(items.list, {
-      "id": id });
-
-
-    view.remove(item.$el);
-
-    this.list = _.pull(this.list, item);
-    this.trigger("updated");
-  },
-
-  toggle(id) {
-    _.find(items.list, {
-      "id": id }).
-    toggle();
-
-    this.trigger("updated");
-  } };
-
-
-const app = {
-  init() {
-    view.init();
-    Object.assign(items, Backbone.Events);
-    items.on("itemAdded", function (item) {
-      logger.log("item added");
-      view.addToList(item);
-    });
-
-    items.on("updated", function () {
-      logger.log("updated");
-      view.updateQuantities();
-    });
-  } };
-
-
-const view = {
-  init() {
-
-    this.$shoppingList = $("#shopping-list");
-    this.$boughtList = $("#bought-list");
-    this.$form = $("form");
-
-    const handleSubmit = function (e) {
-      e.preventDefault();
-
-      let name = $("#item-input"),
-      quantity = $("#quantity-input");
-
-      if (name.val()) {
-        items.add({
-          name: name.val(),
-          quantity: quantity.val() || 1 });
-
-      }
-
-      name.val("");
-      quantity.val("");
-
-    };
-
-    const handleClick = function (e) {
-      e.preventDefault();
-      logger.log("Clicked");
-
-      if (e.target.nodeName === "LI") {
-        let id = $(e.target).data("id").toString();
-        items.toggle(id);
-      } else if (e.target.className === classNames.DELETE) {
-        let id = $(e.target).parent().data("id").toString();
-        items.delete(id);
-      }
-    };
-
-    const handleDelete = function (e) {
-      e.preventDefault();
-      logger.log("Delete: " + item);
-      let id = $(e.target).data("id").toString(),
-      item = _.find(items.list, {
-        "id": id });
-
-
-    };
-
-    $("#lists").on("click", handleClick);
-    this.$form.on("submit", handleSubmit);
-    $("." + classNames.DELETE).on("click", handleDelete);
-
-  },
-
-  addToList(item, list) {
-    let $item = item.$el || this.createListItem(item);
-
-    if (item.bought) {
-      $item.prependTo(this.$boughtList);
+// Check required fields
+function checkRequired(inputArr) {
+  let isRequired = false;
+  inputArr.forEach(function(input) {
+    if (input.value.trim() === '') {
+      showError(input, `${getFieldName(input)} is required`);
+      isRequired = true;
     } else {
-      $item.appendTo(this.$shoppingList);
+      showSuccess(input);
     }
-  },
+  });
 
-  updateQuantities() {
-    logger.log("updateQuantities");
-    $("#shopping-num").html(this.$shoppingList.children().length);
-    $("#bought-num").html(this.$boughtList.children().length);
-  },
+  return isRequired;
+}
 
-  remove($el) {
-    $el.remove();
-  },
+// Check input length
+function checkLength(input, min, max) {
+  if (input.value.length < min) {
+    showError(
+      input,
+      `${getFieldName(input)} must be at least ${min} characters`
+    );
+  } else if (input.value.length > max) {
+    showError(
+      input,
+      `${getFieldName(input)} must be less than ${max} characters`
+    );
+  } else {
+    showSuccess(input);
+  }
+}
 
-  createListItem(item) {
-    item.$el = $(`<li data-id=${item.id}>${item.name} <span class="quantity">${item.quantity}</span><span class="delete">X</span></li>`);
+// Check passwords match
+function checkPasswordsMatch(input1, input2) {
+  if (input1.value !== input2.value) {
+    showError(input2, 'Passwords do not match');
+  }
+}
 
-    return item.$el;
-  },
+// Get fieldname
+function getFieldName(input) {
+  return input.id.charAt(0).toUpperCase() + input.id.slice(1);
+}
 
-  getListItem(id) {
-    let $el = $("li[data-id='" + id + "']");
-    return $el.length ? $el : null;
-  },
+// Event listeners
+form.addEventListener('submit', function(e) {
+  e.preventDefault();
 
-  render(items) {
-    logger.log("render");
+  if(checkRequired([username, email, password, password2])){
+    checkLength(username, 3, 15);
+    checkLength(password, 6, 25);
+    checkEmail(email);
+    checkPasswordsMatch(password, password2);
+  }
 
-    this.$shoppingList.empty();
-    this.$boughtList.empty();
-
-    items.forEach(item => {
-      let $item = $(`<li data-id=${item.id}>${item.name}<span>${item.quantity}</span></li>`);
-
-      if (item.bought) {
-        this.$boughtList.append($item);
-        $item.addClass("bought");
-      } else {
-        this.$shoppingList.append($item);
-      }
-    });
-
-  } };
-
-
-app.init();
-
-items.add({
-  name: "Wine",
-  quantity: 1 });
-
-
-items.add({
-  name: "Cheese",
-  quantity: 1 });
-
-
-items.add({
-  name: "Dark chocolate",
-  quantity: 1 });
+});
